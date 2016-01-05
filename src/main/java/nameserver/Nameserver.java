@@ -3,7 +3,25 @@ package nameserver;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.rmi.AccessException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.NoSuchObjectException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.MissingResourceException;
+import org.apache.commons.logging.Log; 
+import org.apache.commons.logging.LogFactory; 
 
+import cli.Command;
+import cli.Shell;
+import nameserver.exceptions.AlreadyRegisteredException;
+import nameserver.exceptions.InvalidDomainException;
 import util.Config;
 
 /**
@@ -16,6 +34,27 @@ public class Nameserver implements INameserverCli, Runnable {
 	private Config config;
 	private InputStream userRequestStream;
 	private PrintStream userResponseStream;
+	private Shell shell;
+
+	/**
+	 * Config properties
+	 */
+	private String domain;
+	private String registry_host;
+	private int registry_port;
+	private String root_id;
+
+	/**
+	 * Remote object
+	 */
+	private NameserverEngine ns=null;
+
+	/**
+	 * Registry
+	 */
+	private Registry registry = null;
+
+	private Log log = LogFactory.getLog(Nameserver.class);
 
 	/**
 	 * @param componentName
@@ -34,30 +73,104 @@ public class Nameserver implements INameserverCli, Runnable {
 		this.userRequestStream = userRequestStream;
 		this.userResponseStream = userResponseStream;
 
-		// TODO
+		config=new Config(componentName);
+		/* domain: the domain that is managed by this nameserver. 
+		 * The root nameserver is the only nameserver that does not have this property. 
+		 * Therefore you can easily check if the nameserver you are currently starting 
+		 * is either an ordinary nameserver or a root name server.
+		 */
+		try{
+			domain=config.getString("domain");
+		}catch(MissingResourceException mre){}
+
+		registry_host=config.getString("registry.host");
+		registry_port=config.getInt("registry.port");
+		root_id=config.getString("root_id");
+
+		/*
+		 * First, create a new Shell instance and provide the name of the
+		 * component, an InputStream as well as an OutputStream. If you want to
+		 * test the application manually, simply use System.in and System.out.
+		 */
+		shell = new Shell(componentName, userRequestStream, userResponseStream);
+		/*
+		 * Next, register all commands the Shell should support. In this example
+		 * this class implements all desired commands.
+		 */
+		shell.register(this);
 	}
 
 	@Override
 	public void run() {
-		// TODO
+		INameserver root_stub=null;
+		ns=new NameserverEngine();
+
+		try {
+			if(isRoot()){
+				log.info("Server is root-ns");
+				registry = LocateRegistry.createRegistry(registry_port);
+				root_stub=(INameserver) UnicastRemoteObject.exportObject(ns,0);
+				registry.bind(root_id, root_stub);
+			}else{
+				registry=LocateRegistry.getRegistry(registry_host, registry_port);
+				root_stub=(INameserver) registry.lookup(root_id);
+				INameserver ns_stub=(INameserver) UnicastRemoteObject.exportObject(ns, 0);
+				//root_stub.registerNameserver(reverseDomain(domain), ns_stub, ns_stub);
+				root_stub.registerNameserver(domain, ns_stub, ns_stub);
+			}
+			new Thread(shell).start();
+			shell.writeLine(componentName+" up and waiting for commands!");
+
+		} catch (IOException | AlreadyRegisteredException | InvalidDomainException | NotBoundException | AlreadyBoundException e) {
+			System.err.println(e.getMessage()+"\nShutdown now.");
+			try {
+				exit();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		}
+	}
+
+	private boolean isRoot(){
+		return domain==null ? true : false;
 	}
 
 	@Override
+	@Command
 	public String nameservers() throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		return ns.toStringZones();
 	}
 
 	@Override
+	@Command
 	public String addresses() throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		return ns.toStringAddresses();
 	}
 
 	@Override
+	@Command
 	public String exit() throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		/*
+		 * Shutdown the nameserver. Do not forget to unexport its remote object using the static method
+		 * UnicastRemoteObject.unexportObject(Remote obj, boolean force) and in the case of the
+		 * root nameserver also unregister the remote object and close the registry by invoking the before
+		 * mentioned static unexportObject method and registry reference as parameter. Otherwise the
+		 * application may not stop.
+		 */
+		try{
+			if(isRoot() && registry!=null){
+				registry.unbind(root_id);
+				UnicastRemoteObject.unexportObject(registry, true);
+			}
+			UnicastRemoteObject.unexportObject(ns, false);
+		}catch(NoSuchObjectException | NotBoundException e){}
+
+		if(shell!=null){
+			shell.close();
+		}
+
+		return "Nameserver "+componentName+" shutdown.";
 	}
 
 	/**
@@ -68,7 +181,33 @@ public class Nameserver implements INameserverCli, Runnable {
 	public static void main(String[] args) {
 		Nameserver nameserver = new Nameserver(args[0], new Config(args[0]),
 				System.in, System.out);
-		// TODO: start the nameserver
+		new Thread(nameserver).start();
+	}
+
+	/**
+	 * http://codereview.stackexchange.com/a/113035
+	 * @param s
+	 * @return
+	 */
+	public static String reverseDomain(String s) {
+		if (s == null || s.isEmpty()) return s;
+		String[] components = s.split("\\.");
+		StringBuilder result = new StringBuilder(s.length());
+		for (int i = components.length - 1; i > 0; i--) {
+			result.append(components[i]).append(".");
+		}
+		return result.append(components[0]).toString();
+	}
+
+	/**
+	 * http://stackoverflow.com/a/740351
+	 * @param c
+	 * @return
+	 */
+	private static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
+		List<T> list = new ArrayList<T>(c);
+		java.util.Collections.sort(list);
+		return list;
 	}
 
 }
