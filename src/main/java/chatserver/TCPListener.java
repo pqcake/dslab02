@@ -7,10 +7,16 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import nameserver.INameserver;
+import nameserver.INameserverForChatserver;
 import util.Config;
 
 /**
@@ -19,10 +25,11 @@ import util.Config;
  */
 public class TCPListener implements Runnable{
 
-	private Config config;
 	private ServerSocket serverSocket;
 	private ExecutorService pool;
 	private UserHolder users;
+	private Config config;
+	private INameserverForChatserver root_stub=null;
 
 	/**
 	 * @param config 
@@ -30,27 +37,28 @@ public class TCPListener implements Runnable{
 	 * 
 	 */
 	public TCPListener(Config config,UserHolder users) throws IOException {
-		this.users=users;
 		this.config=config;
+		this.users=users;
 		this.pool=Executors.newCachedThreadPool();
 		this.serverSocket = new ServerSocket(config.getInt("tcp.port"));
 	}
 
 	@Override
 	public void run() {		
-//		try {
-//			
-//		} catch (IOException e) {
-//			throw new RuntimeException("Cannot listen on TCP port.", e);
-//		}
-
 		Socket socket = null;
+		try {
+			Registry registry=LocateRegistry.getRegistry(config.getString("registry.host"), config.getInt("registry.port"));
+			root_stub=(INameserver) registry.lookup(config.getString("root_id"));
+		} catch (RemoteException | NotBoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		try {
 			while(true){
 				//waiting for connection
 				socket=serverSocket.accept();
 				// handle incoming connections from client in a separate thread
-				pool.execute(new TCPHandler(socket,users));
+				pool.execute(new TCPHandler(socket,users,root_stub));
 			}
 		} catch (SocketException se){
 
