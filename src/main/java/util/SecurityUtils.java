@@ -2,6 +2,7 @@ package util;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import java.security.SecureRandom;
 import java.security.Security;
 
 /**
@@ -11,6 +12,7 @@ import java.security.Security;
  * Provides security provider related utility methods.
  */
 public final class SecurityUtils {
+	private static SecureRandom secureRandom = new SecureRandom();
 
 	private SecurityUtils() {
 	}
@@ -23,5 +25,12 @@ public final class SecurityUtils {
 		if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
 			Security.insertProviderAt(new BouncyCastleProvider(), 0);
 		}
+	}
+
+	public static synchronized byte[] getSecureRandom(){
+		// generates a 32 byte secure random number
+		final byte[] number = new byte[32];
+		secureRandom.nextBytes(number);
+		return number;
 	}
 }

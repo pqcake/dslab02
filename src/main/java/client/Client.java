@@ -12,7 +12,11 @@ import java.net.UnknownHostException;
 
 import cli.Command;
 import cli.Shell;
+import org.bouncycastle.util.encoders.Base64;
 import util.Config;
+import util.SecurityUtils;
+import util.TCPConnectionDecoratorEncryption;
+import util.encrypt.EncryptionUtilAuthRSA;
 
 public class Client implements IClientCli, Runnable {
 
@@ -291,17 +295,53 @@ public class Client implements IClientCli, Runnable {
 	 * @param args
 	 *            the first argument is the name of the {@link Client} component
 	 */
-	public static void main(String[] args) {
-		new Client(args[0], new Config("client"), System.in,System.out);
-	}
+	public static void main(String[] args) {new Client(args[0], new Config("client"), System.in,System.out);}
 
 	// --- Commands needed for Lab 2. Please note that you do not have to
 	// implement them for the first submission. ---
 
 	@Override
+	@Command
 	public String authenticate(String username) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		String response;
+		String challenge= new String(Base64.encode(SecurityUtils.getSecureRandom()));
+		if(serverHandler.isAlive()){
+			response="Already logged in.";
+		}else{
+			try{
+				serverHandler=new ServerTCPHandler(config.getString("chatserver.host"),config.getInt("chatserver.tcp.port"));
+				serverHandler.start();
+				//Read key file locations
+				String clientKey=config.getString("keys.dir")+username+".pem";
+				String serverKey=config.getString("chatserver.key");
+				//create and init server and client RSA ciphers
+				EncryptionUtilAuthRSA rsaUtil=new EncryptionUtilAuthRSA(clientKey,serverKey);
+				TCPConnectionDecoratorEncryption rsaDecorator=new TCPConnectionDecoratorEncryption(rsaUtil);
+				//ToDo add RSA Decorators to TCPConnection
+				serverHandler.println("!authenticate "+username+ " " + challenge);
+
+				response=serverHandler.getNextResponse();
+				if(response.startsWith(ERROR)){
+					serverHandler.close();
+				}else if(response.startsWith("!ok")){
+					String[] responseArr=response.split(" ");
+					if(responseArr[1].equals(challenge)) {
+						this.username = username;
+						//ToDo  AES part send server challenge
+						pubMsgThread = new Thread(this);
+						pubMsgThread.start();
+					}else{
+						System.out.println("This server is fishy!");
+						serverHandler.close();
+					}
+				}else {
+					serverHandler.close();
+				}
+			}catch(IOException ioe){
+				return "Could not connect to server "+config.getString("chatserver.host")+":"+config.getInt("chatserver.tcp.port");
+			}
+		}
+		return response;
 	}
 
 }

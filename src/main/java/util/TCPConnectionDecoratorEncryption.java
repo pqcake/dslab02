@@ -7,8 +7,12 @@ import java.io.IOException;
 /**
  * Created by pqpies on 1/4/16.
  */
-public class TCPConnectionEncrypted extends TCPConnectionDecoratorBasic {
+public class TCPConnectionDecoratorEncryption extends TCPConnectionDecoratorBasic {
     private EncryptionUtil encryptionUtil;
+
+    public TCPConnectionDecoratorEncryption(EncryptionUtil encryptionUtil){
+        this.encryptionUtil=encryptionUtil;
+    }
 
     @Override
     public String prepare(String msg) throws Exception{

@@ -37,7 +37,7 @@ public class TCPConnectionBasic implements TCPConnection {
 			throw new Exception("Lost tcp connection to server.");
 		}
 		if(decorator!=null)
-			msg=decorator.prepare(msg);
+			msg=new String(decorator.prepare(msg.getBytes()));
 		outputWriter.println(msg);
 		outputWriter.flush();
 	}
@@ -75,7 +75,7 @@ public class TCPConnectionBasic implements TCPConnection {
             Thread.currentThread().interrupt();
         }
 		if(decorator!=null && response!=null)
-			decorator.receive(response);
+			response=new String(decorator.receive(response.getBytes()));
         return response;
 	}
 

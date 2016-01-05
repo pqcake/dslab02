@@ -1,6 +1,6 @@
 package util.encrypt;
 
-import java.util.Base64;
+import org.bouncycastle.util.encoders.Base64;
 
 /**
  * Created by pqpies on 1/5/16.
@@ -8,11 +8,11 @@ import java.util.Base64;
 public class EncryptionUtilB64 implements EncryptionUtil{
     @Override
     public byte[] encrypt(byte[] msg) {
-        return Base64.getEncoder().encode(msg);
+        return Base64.encode(msg);
     }
 
     @Override
     public byte[] decrypt(byte[] received) {
-        return Base64.getDecoder().decode(received);
+        return Base64.decode(received);
     }
 }
