@@ -179,9 +179,8 @@ public class TCPHandler implements Runnable {
 		String username=params[1];
 		String[] array;
 		INameserverForChatserver ns=root_stub;
-		
-		array=getDomainSubstrings(username);
-		while(array.length==2){
+
+		while((array=getDomainSubstrings(username)).length==2){
 			username=array[0];
 			try {
 				ns=ns.getNameserver(array[1]);
@@ -192,7 +191,7 @@ public class TCPHandler implements Runnable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			array=getDomainSubstrings(username);
+
 		}
 		
 		try {

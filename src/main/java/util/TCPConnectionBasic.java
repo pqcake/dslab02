@@ -66,14 +66,14 @@ public class TCPConnectionBasic implements TCPConnection {
 	@Override
 	public String receive() throws IOException {
 		String response = "";
-        try{
+        //try{
         	response = inputStream.readLine();
         		
-        } catch (SocketException ex){
-        	// Client is shutting down
-        	response = null;
-            Thread.currentThread().interrupt();
-        }
+//        } catch (SocketException ex){
+//        	// Client is shutting down
+//        	response = null;
+//            Thread.currentThread().interrupt();
+//        }
 		if(decorator!=null && response!=null)
 			response=new String(decorator.receive(response.getBytes()));
         return response;

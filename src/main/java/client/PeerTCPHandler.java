@@ -57,4 +57,9 @@ public class PeerTCPHandler extends AbstractTCPHandler {
 		runflag=false;
 	}
 
+	@Override
+	protected void hookIncomingNull() {
+		runflag=false;
+	}
+
 }
