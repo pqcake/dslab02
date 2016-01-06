@@ -1,7 +1,11 @@
 package client;
 
+import org.bouncycastle.util.encoders.Base64;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.io.File;
+import java.security.Key;
 
 import cli.Shell;
 
@@ -11,13 +15,15 @@ public class PeerTCPHandler extends AbstractTCPHandler {
 	private String msg;
 	private String toUser;
 	private String fromUser;
+    private Key secretKey;
 	
-	public PeerTCPHandler(String host, int port,Shell shell,String fromUser,String toUser, String msg) throws UnknownHostException, IOException {
+	public PeerTCPHandler(String host, int port,Shell shell,String fromUser,String toUser, String msg, Key secretKey) throws UnknownHostException, IOException {
 		super(host, port);
 		this.shell=shell;
 		this.msg=msg;
 		this.fromUser=fromUser;
 		this.toUser=toUser;
+        this.secretKey=secretKey;
 	}
 
 //	@Override
@@ -39,14 +45,30 @@ public class PeerTCPHandler extends AbstractTCPHandler {
 
 	@Override
 	protected void hookInReadingLoop(String incoming) throws IOException {
-		shell.writeLine(toUser+" replied with "+incoming);
+
+        String response = incoming;
+        if(incoming.contains("!tampered")) {
+            String hmac = incoming.substring(0, incoming.indexOf(" "));
+            String message = incoming.substring(incoming.indexOf(" ")+1);
+
+            if(!HashMACService.verifyHMAC(secretKey, hmac, message)) {
+                shell.writeLine("Response from " + toUser + " was tampered!");
+            }
+            else {
+                response = "!tampered";
+            }
+        }
+        else {
+            shell.writeLine(toUser + " replied with " + response);
+        }
 		this.close();
 	}
 
 	@Override
 	protected void hookBeforeReading() {
 		try {
-			tcpChannel.send("(PRIVATE) " + fromUser + ": " + msg);
+            String hmac = HashMACService.createHMAC(secretKey, msg);
+			tcpChannel.send(hmac + " " + fromUser + ": " + msg);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

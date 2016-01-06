@@ -9,11 +9,14 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.io.File;
+import java.security.Key;
 
 import cli.Command;
 import cli.Shell;
 import org.bouncycastle.util.encoders.Base64;
 import util.Config;
+import util.Keys;
 import util.SecurityUtils;
 import util.TCPConnectionDecoratorEncryption;
 import util.encrypt.EncryptionUtilAuthRSA;
@@ -34,6 +37,8 @@ public class Client implements IClientCli, Runnable {
 	private String username;
 	private String lastMsg="No message received!";
 	private static final String ERROR="!error ";
+
+    private Key secretKey;
 
 	/**
 	 * @param componentName
@@ -87,7 +92,13 @@ public class Client implements IClientCli, Runnable {
 			e.printStackTrace();
 		}
 
-	}
+        // get secrect key between clients from config
+        try {
+            secretKey = Keys.readSecretKey(new File(config.getString("hmac.key")));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 	@Override
 	public void run() {
@@ -206,7 +217,7 @@ public class Client implements IClientCli, Runnable {
 			String host=parts[0];
 			int port=Integer.parseInt(parts[1]);
 			try{
-				PeerTCPHandler peer=new PeerTCPHandler(host, port, shell, this.username,toUser, message);
+				PeerTCPHandler peer=new PeerTCPHandler(host, port, shell, this.username,toUser, message, secretKey);
 				peer.run();
 			}catch(UnknownHostException ue){
 				return "Could not connect to user "+toUser+"@"+host+":"+port;
@@ -249,6 +260,7 @@ public class Client implements IClientCli, Runnable {
 			}
 			try{
 				incomingpeer=new IncomingPeerTCPHandler(port, shell);
+				incomingpeer.setSecretKey(secretKey);
 			}catch(IOException ioe){
 				return "Register unsuccessful: "+ioe.getMessage();
 			}catch(IllegalArgumentException ie){
