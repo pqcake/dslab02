@@ -72,8 +72,12 @@ public class ServerTCPHandler extends AbstractTCPHandler{
 	}
 
 	public void println(String string) {
-		if(writer!=null){
-			writer.println(string);
+		if(tcpChannel!=null&&!tcpChannel.isClosed()){
+			try {
+				tcpChannel.send(string);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 }

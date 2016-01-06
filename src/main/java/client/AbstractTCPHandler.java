@@ -1,5 +1,8 @@
 package client;
 
+import util.TCPConnection;
+import util.TCPConnectionBasic;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -14,16 +17,18 @@ public abstract class AbstractTCPHandler extends Thread{
 	private ServerSocket serverSocket;
 	protected BufferedReader reader;
 	protected PrintWriter writer;
+	protected TCPConnection tcpChannel;
 	protected boolean runflag=true;
 
 	public AbstractTCPHandler(){}
 	
-	public AbstractTCPHandler(String host,int port) throws IllegalArgumentException, UnknownHostException, IOException {
+	public AbstractTCPHandler(String host,int port) throws IllegalArgumentException, IOException {
 		this.socket = new Socket(host,port);
+		tcpChannel=new TCPConnectionBasic(socket);
 		createReaderWriter();
 	}
 
-	public AbstractTCPHandler(int port) throws IllegalArgumentException, UnknownHostException, IOException {
+	public AbstractTCPHandler(int port) throws IllegalArgumentException, IOException {
 		serverSocket = new ServerSocket(port);
 	}
 
@@ -51,7 +56,7 @@ public abstract class AbstractTCPHandler extends Thread{
 			if(socket!=null && !socket.isClosed()){
 				try{
 					hookBeforeReading();
-					while ((incoming = reader.readLine()) != null) {
+					while ((incoming = tcpChannel.receive()) != null) {
 						hookInReadingLoop(incoming);
 					}
 				}catch(IOException ioe){
@@ -82,5 +87,9 @@ public abstract class AbstractTCPHandler extends Thread{
 		}catch(IOException e){
 			e.printStackTrace();
 		}
+	}
+
+	public TCPConnection getTcpChannel() {
+		return tcpChannel;
 	}
 }

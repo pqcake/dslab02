@@ -45,7 +45,11 @@ public class PeerTCPHandler extends AbstractTCPHandler {
 
 	@Override
 	protected void hookBeforeReading() {
-		writer.println("(PRIVATE) "+fromUser+": "+msg); 
+		try {
+			tcpChannel.send("(PRIVATE) " + fromUser + ": " + msg);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override

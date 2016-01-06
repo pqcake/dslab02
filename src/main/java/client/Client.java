@@ -326,8 +326,14 @@ public class Client implements IClientCli, Runnable {
 				}else if(response.startsWith("!ok")){
 					String[] responseArr=response.split(" ");
 					if(responseArr[1].equals(challenge)) {
-						this.username = username;
+						String serverChallenge=responseArr[2];
+						String b64AESKey=responseArr[3];
+						String b64AESIv=responseArr[4];
+						byte[] aesKEY=Base64.decode(b64AESKey);
+						byte[] aesIV=Base64.decode(b64AESIv);
+						//ToDO create AES Decorator object with key and iv
 						//ToDo  AES part send server challenge
+						this.username = username;
 						pubMsgThread = new Thread(this);
 						pubMsgThread.start();
 					}else{

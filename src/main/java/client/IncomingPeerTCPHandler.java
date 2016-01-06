@@ -16,7 +16,11 @@ public class IncomingPeerTCPHandler extends AbstractTCPHandler{
 	@Override
 	protected void hookInReadingLoop(String incoming) throws IOException {
 		shell.writeLine(incoming);
-		writer.println("!ack");
+		try {
+			tcpChannel.send("!ack");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 //	@Override

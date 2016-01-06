@@ -19,7 +19,7 @@ public class TCPConnectionBasic implements TCPConnection {
 		this(new Socket(serverHost, port));
 	}
 	
-	public TCPConnectionBasic(Socket socket) throws UnknownHostException {
+	public TCPConnectionBasic(Socket socket) {
 		try {
 			tcpSocket = socket;
 			inputStream = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream()));

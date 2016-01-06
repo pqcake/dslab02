@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 
 import model.Status;
@@ -12,6 +13,8 @@ import model.User;
 import nameserver.INameserverForChatserver;
 import nameserver.exceptions.AlreadyRegisteredException;
 import nameserver.exceptions.InvalidDomainException;
+import util.TCPConnection;
+import util.TCPConnectionBasic;
 
 public class TCPHandler implements Runnable {
 
@@ -19,6 +22,7 @@ public class TCPHandler implements Runnable {
 	private UserHolder users;
 	private User user;
 	private BufferedReader reader;
+	private TCPConnection tcpChannel;
 	private PrintWriter writer;
 	private static final String ERROR="!error ";
 	private INameserverForChatserver root_stub;
@@ -26,6 +30,7 @@ public class TCPHandler implements Runnable {
 	public TCPHandler(Socket socket, UserHolder users, INameserverForChatserver root_stub) {
 		this.root_stub=root_stub;
 		this.socket=socket;
+		this.tcpChannel=new TCPConnectionBasic(socket);
 		this.users=users;
 	}
 
@@ -40,7 +45,7 @@ public class TCPHandler implements Runnable {
 					true);
 			String request;
 
-			while ((request = reader.readLine()) != null && !socket.isClosed()) {
+			while ((request = tcpChannel.receive()) != null && !tcpChannel.isClosed()) {
 				String[] parts = request.split("\\s",2);
 
 				String response=ERROR+"You are not logged in.";
@@ -74,13 +79,19 @@ public class TCPHandler implements Runnable {
 //						response=ERROR+"You are not logged in.";
 //					}
 				}
-				writer.println(response);
+				tcpChannel.send(response);
 			}
 
 		} catch (UserLoginException e){
-			writer.println(e.getMessage());
+			try {
+				tcpChannel.send(e.getMessage());
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
 		} catch (IOException e) {
 
+		} catch (Exception e) {
+			e.printStackTrace();
 		} finally {
 			if (socket != null && !socket.isClosed()){
 				logout();
@@ -224,6 +235,11 @@ public class TCPHandler implements Runnable {
 	}
 
 	public void writeLine(String msg) {
-		writer.println(msg);
+		if(tcpChannel!=null&&!tcpChannel.isClosed())
+			try {
+				tcpChannel.send(msg);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 	}
 }
