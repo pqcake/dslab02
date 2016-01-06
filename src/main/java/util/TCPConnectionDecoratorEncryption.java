@@ -16,16 +16,20 @@ public class TCPConnectionDecoratorEncryption extends TCPConnectionDecoratorBasi
 
     @Override
     public String prepare(String msg) throws Exception{
+        // first use self then next
+        msg=new String(encryptionUtil.encrypt(msg.getBytes()));
         if(decorator!=null)
             decorator.prepare(msg);
-        return new String(encryptionUtil.encrypt(msg.getBytes()));
+        return msg;
     }
 
     @Override
     public byte[] prepare(byte[] msg) throws Exception{
+        // first use self then next
+        msg=encryptionUtil.encrypt(msg);
         if(decorator!=null)
             msg=decorator.prepare(msg);
-        return encryptionUtil.encrypt(msg);
+        return msg;
     }
 
     @Override
@@ -35,9 +39,10 @@ public class TCPConnectionDecoratorEncryption extends TCPConnectionDecoratorBasi
 
     @Override
     public byte[] receive(byte[] received) throws IOException{
-        received=encryptionUtil.decrypt(received);
+        // first remove previous then this
         if(decorator!=null)
             received=decorator.receive(received);
+        received=encryptionUtil.decrypt(received);
         return received;
     }
 

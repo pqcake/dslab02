@@ -1,8 +1,6 @@
 package client;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -13,10 +11,7 @@ import java.net.UnknownHostException;
 import cli.Command;
 import cli.Shell;
 import org.bouncycastle.util.encoders.Base64;
-import util.Config;
-import util.SecurityUtils;
-import util.TCPConnectionDecorator;
-import util.TCPConnectionDecoratorEncryption;
+import util.*;
 import util.encrypt.EncryptionUtilAES;
 import util.encrypt.EncryptionUtilAuthRSA;
 import util.encrypt.EncryptionUtilB64;
@@ -147,6 +142,8 @@ public class Client implements IClientCli, Runnable {
 			//response=serverHandler.getNextResponse();
 			
 			serverHandler.close();
+			// remove all decorators (akA remove encryption from channel
+			serverHandler.getTcpChannel().setDecorator(null);
 			pubMsgThread.interrupt();
 			response="Logged out.";
 		}
@@ -298,7 +295,10 @@ public class Client implements IClientCli, Runnable {
 	 * @param args
 	 *            the first argument is the name of the {@link Client} component
 	 */
-	public static void main(String[] args) {new Client(args[0], new Config("client"), System.in,System.out);}
+	public static void main(String[] args) {
+		SecurityUtils.registerBouncyCastle();
+		new Client(args[0], new Config("client"), System.in,System.out);
+	}
 
 	// --- Commands needed for Lab 2. Please note that you do not have to
 	// implement them for the first submission. ---
@@ -311,51 +311,53 @@ public class Client implements IClientCli, Runnable {
 		if(serverHandler.isAlive()){
 			response="Already logged in.";
 		}else{
-			try{
-				serverHandler=new ServerTCPHandler(config.getString("chatserver.host"),config.getInt("chatserver.tcp.port"));
+			try {
+				serverHandler = new ServerTCPHandler(config.getString("chatserver.host"), config.getInt("chatserver.tcp.port"));
 				//Read key file locations
-				String clientKey=config.getString("keys.dir")+username+".pem";
-				String serverKey=config.getString("chatserver.key");
+				String clientKey = config.getString("keys.dir") + "/" + username + ".pem";
+				String serverKey = config.getString("chatserver.key");
 				//create and init server and client RSA ciphers
-				EncryptionUtilAuthRSA rsaUtil=new EncryptionUtilAuthRSA(clientKey,serverKey);
-				TCPConnectionDecoratorEncryption rsaDecorator=new TCPConnectionDecoratorEncryption(rsaUtil);
-				TCPConnectionDecoratorEncryption b64Decorator=new TCPConnectionDecoratorEncryption(new EncryptionUtilB64());
-				//ToDo add RSA Decorators to TCPConnection
-				serverHandler.println("!authenticate "+username+ " " + challenge);
+				EncryptionUtilAuthRSA rsaUtil = new EncryptionUtilAuthRSA(Keys.readPublicPEM(new File(serverKey)), Keys.readPrivatePEM(new File(clientKey)));
+				TCPConnectionDecoratorEncryption rsaDecorator = new TCPConnectionDecoratorEncryption(rsaUtil);
+				TCPConnectionDecoratorEncryption b64Decorator = new TCPConnectionDecoratorEncryption(new EncryptionUtilB64());
 				rsaDecorator.setDecorator(b64Decorator);
+				//ToDo add RSA Decorators to TCPConnection
 				serverHandler.getTcpChannel().setDecorator(rsaDecorator);
+				serverHandler.println("!authenticate " + username + " " + challenge);
 				serverHandler.start();
 
-				response=serverHandler.getNextResponse();
-				if(response.startsWith(ERROR)){
+				response = serverHandler.getNextResponse();
+				if (response.startsWith(ERROR)) {
 					serverHandler.close();
-				}else if(response.startsWith("!ok")){
-					String[] responseArr=response.split(" ");
-					if(responseArr[1].equals(challenge)) {
-						String serverChallenge=responseArr[2];
-						String b64AESKey=responseArr[3];
-						String b64AESIv=responseArr[4];
-						byte[] aesKEY=Base64.decode(b64AESKey);
-						byte[] aesIV=Base64.decode(b64AESIv);
-						//ToDO create AES Decorator object with key and iv
-						TCPConnectionDecorator aesAddon=new TCPConnectionDecoratorEncryption(new EncryptionUtilAES(aesKEY,aesIV));
-						TCPConnectionDecorator currentDecorator=serverHandler.getTcpChannel().getDecorator();
-						if(currentDecorator!=null)
+				} else if (response.startsWith("!ok")) {
+					String[] responseArr = response.split(" ");
+					if (responseArr[1].equals(challenge)) {
+						String serverChallenge = responseArr[2];
+						String b64AESKey = responseArr[3];
+						String b64AESIv = responseArr[4];
+						byte[] aesKEY = Base64.decode(b64AESKey);
+						byte[] aesIV = Base64.decode(b64AESIv);
+						TCPConnectionDecorator aesAddon = new TCPConnectionDecoratorEncryption(new EncryptionUtilAES(aesKEY, aesIV));
+						TCPConnectionDecorator currentDecorator = serverHandler.getTcpChannel().getDecorator();
+						if (currentDecorator != null)
 							aesAddon.setDecorator(currentDecorator.getDecorator());
 						serverHandler.getTcpChannel().setDecorator(aesAddon);
-						//ToDo  AES part send server challenge
 						serverHandler.println(serverChallenge);
 						this.username = username;
 						pubMsgThread = new Thread(this);
 						pubMsgThread.start();
-					}else{
-						System.out.println("This server is fishy!");
+						response = serverHandler.getNextResponse();
+					} else {
+						response = "The server is fishy!";
 						serverHandler.close();
 					}
-				}else {
+				} else {
 					serverHandler.close();
 				}
+			}catch (FileNotFoundException e){
+				return "No key file for this users!";
 			}catch(IOException ioe){
+				ioe.printStackTrace();
 				return "Could not connect to server "+config.getString("chatserver.host")+":"+config.getInt("chatserver.tcp.port");
 			}
 		}

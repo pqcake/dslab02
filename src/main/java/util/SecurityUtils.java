@@ -33,4 +33,10 @@ public final class SecurityUtils {
 		secureRandom.nextBytes(number);
 		return number;
 	}
+	public static synchronized byte[] getSecureRandomSmall(){
+		// generates a 32 byte secure random number
+		final byte[] number = new byte[16];
+		secureRandom.nextBytes(number);
+		return number;
+	}
 }
