@@ -234,6 +234,7 @@ public class TCPHandler implements Runnable {
 					}
 				}else{
 					if(u.getConn()!=this){
+						tcpChannel.setDecorator(new TCPConnectionDecoratorEncryption(new EncryptionUtilB64()));
 						throw new UserLoginException(ERROR+"User already logged in on other client!");
 					}
 					throw new UserLoginException(ERROR+"You are already logged in.");
