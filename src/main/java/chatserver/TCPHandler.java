@@ -1,20 +1,24 @@
 package chatserver;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
+import java.security.NoSuchAlgorithmException;
 
 import model.Status;
 import model.User;
 import nameserver.INameserverForChatserver;
 import nameserver.exceptions.AlreadyRegisteredException;
 import nameserver.exceptions.InvalidDomainException;
-import util.TCPConnection;
-import util.TCPConnectionBasic;
+import org.bouncycastle.util.encoders.Base64;
+import util.*;
+import util.encrypt.EncryptionUtilAES;
+import util.encrypt.EncryptionUtilAuthRSA;
+import util.encrypt.EncryptionUtilB64;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 public class TCPHandler implements Runnable {
 
@@ -26,12 +30,14 @@ public class TCPHandler implements Runnable {
 	private PrintWriter writer;
 	private static final String ERROR="!error ";
 	private INameserverForChatserver root_stub;
+	private Config config;
 
-	public TCPHandler(Socket socket, UserHolder users, INameserverForChatserver root_stub) {
+	public TCPHandler(Socket socket, UserHolder users, INameserverForChatserver root_stub,Config config) {
 		this.root_stub=root_stub;
 		this.socket=socket;
 		this.tcpChannel=new TCPConnectionBasic(socket);
 		this.users=users;
+		this.config=config;
 	}
 
 	@Override
@@ -44,13 +50,14 @@ public class TCPHandler implements Runnable {
 			writer = new PrintWriter(socket.getOutputStream(),
 					true);
 			String request;
+			resetToRSA();
 
 			while ((request = tcpChannel.receive()) != null && !tcpChannel.isClosed()) {
 				String[] parts = request.split("\\s",2);
 
 				String response=ERROR+"You are not logged in.";
-				if(parts[0].equals("!login")){
-					response=login(parts);
+				if(parts[0].equals("!authenticate")){
+					response=authenticate(parts);
 				}
 				else{
 					if(user!=null){
@@ -79,6 +86,7 @@ public class TCPHandler implements Runnable {
 //						response=ERROR+"You are not logged in.";
 //					}
 				}
+				System.out.println("sending:"+response);
 				tcpChannel.send(response);
 			}
 
@@ -106,6 +114,17 @@ public class TCPHandler implements Runnable {
 		}
 	}
 
+	private void resetToRSA() throws IOException{
+		//Read key file locations
+		String serverKey=config.getString("key");
+		//create and init server and client RSA ciphers
+		EncryptionUtilAuthRSA rsaUtil=new EncryptionUtilAuthRSA(null, Keys.readPrivatePEM(new File(serverKey)));
+		TCPConnectionDecoratorEncryption rsaDecorator=new TCPConnectionDecoratorEncryption(rsaUtil);
+		TCPConnectionDecoratorEncryption b64Decorator=new TCPConnectionDecoratorEncryption(new EncryptionUtilB64());
+		rsaDecorator.setDecorator(b64Decorator);
+		tcpChannel.setDecorator(rsaDecorator);
+	}
+
 	public String login(String [] params) throws UserLoginException{
 		if(params.length==2){
 			params=params[1].split("\\s");
@@ -128,6 +147,94 @@ public class TCPHandler implements Runnable {
 				}else{
 					if(u.getConn()!=this){
 						throw new UserLoginException(ERROR+"User already logged in on other client!");					
+					}
+					throw new UserLoginException(ERROR+"You are already logged in.");
+				}
+			}
+		}
+		throw new UserLoginException(ERROR+"Wrong username or password.");
+	}
+
+	public String authenticate(String [] params) throws UserLoginException{
+		System.out.println("Starting auth!");
+		if(params.length==2){
+			params=params[1].split("\\s");
+			if(params.length!=2) {
+				System.out.println("FAIL");
+				return ERROR + "Wrong number of arguments.";
+			}
+		}
+		String username=params[0];
+		String challenge=params[1];
+		String clientKey=config.getString("keys.dir")+"/"+username+".pub.pem";
+		String serverKey=config.getString("key");
+		User u=users.getUser(username);
+
+		if(u!=null){
+			synchronized (u) {
+				if(u.getStatus()!=Status.ONLINE){
+					EncryptionUtilAuthRSA rsaUtil= null;
+					try {
+						File clientKeyFile=new File(clientKey);
+						File serverKeyFile=new File(serverKey);
+						rsaUtil = new EncryptionUtilAuthRSA(Keys.readPublicPEM(clientKeyFile),Keys.readPrivatePEM(serverKeyFile));
+						TCPConnectionDecoratorEncryption rsaDecorator=new TCPConnectionDecoratorEncryption(rsaUtil);
+						TCPConnectionDecoratorEncryption b64Decorator=new TCPConnectionDecoratorEncryption(new EncryptionUtilB64());
+						rsaDecorator.setDecorator(b64Decorator);
+						tcpChannel.setDecorator(rsaDecorator);
+						String msg="!ok "+challenge;
+						// generate server challenge
+						byte[] serverChallenge=SecurityUtils.getSecureRandom();
+						String serverChallengeB64= new String(Base64.encode(serverChallenge));
+						// generate aes key
+						KeyGenerator generator = KeyGenerator.getInstance("AES");
+						// KEYSIZE is in bits
+						generator.init(256);
+						SecretKey key = generator.generateKey();
+						byte[] aesKey=key.getEncoded();
+						String aesKeyB64= new String(Base64.encode(aesKey));
+						// generate iv
+						byte[] iv=SecurityUtils.getSecureRandomSmall();
+						String ivB64= new String(Base64.encode(iv));
+						msg+=" "+serverChallengeB64+" "+aesKeyB64+" "+ivB64;
+						try {
+							tcpChannel.send(msg);
+							TCPConnectionDecorator aesAddon=new TCPConnectionDecoratorEncryption(new EncryptionUtilAES(aesKey,iv));
+							TCPConnectionDecorator currentDecorator=tcpChannel.getDecorator();
+							if(currentDecorator!=null)
+								aesAddon.setDecorator(currentDecorator.getDecorator());
+							tcpChannel.setDecorator(aesAddon);
+							String response=tcpChannel.receive();
+							if(response.equals(serverChallengeB64)){
+								u.setStatus(Status.ONLINE);
+								u.setConn(this);
+								user=u;
+								return "Successfully logged in.";
+							}else{
+								resetToRSA();
+								throw new UserLoginException(ERROR+"Wrong challenge response u are not user:"+username);
+							}
+
+						} catch (Exception e) {
+							resetToRSA();
+							e.printStackTrace();
+							throw new UserLoginException(ERROR+e.getMessage());
+						}
+					} catch (FileNotFoundException e){
+						tcpChannel.setDecorator(new TCPConnectionDecoratorEncryption(new EncryptionUtilB64()));
+						throw new UserLoginException(ERROR+"Key file not found on server sry!");
+					} catch (IOException | NoSuchAlgorithmException e) {
+						e.printStackTrace();
+						try {
+							resetToRSA();
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+						throw new UserLoginException(ERROR+e.getMessage());
+					}
+				}else{
+					if(u.getConn()!=this){
+						throw new UserLoginException(ERROR+"User already logged in on other client!");
 					}
 					throw new UserLoginException(ERROR+"You are already logged in.");
 				}

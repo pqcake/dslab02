@@ -58,7 +58,7 @@ public class TCPListener implements Runnable{
 				//waiting for connection
 				socket=serverSocket.accept();
 				// handle incoming connections from client in a separate thread
-				pool.execute(new TCPHandler(socket,users,root_stub));
+				pool.execute(new TCPHandler(socket,users,root_stub,config));
 			}
 		} catch (SocketException se){
 

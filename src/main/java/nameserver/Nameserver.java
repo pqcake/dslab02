@@ -87,16 +87,7 @@ public class Nameserver implements INameserverCli, Runnable {
 		registry_port=config.getInt("registry.port");
 		root_id=config.getString("root_id");
 
-		/*
-		 * First, create a new Shell instance and provide the name of the
-		 * component, an InputStream as well as an OutputStream. If you want to
-		 * test the application manually, simply use System.in and System.out.
-		 */
 		shell = new Shell(componentName, userRequestStream, userResponseStream);
-		/*
-		 * Next, register all commands the Shell should support. In this example
-		 * this class implements all desired commands.
-		 */
 		shell.register(this);
 	}
 
@@ -115,7 +106,6 @@ public class Nameserver implements INameserverCli, Runnable {
 				registry=LocateRegistry.getRegistry(registry_host, registry_port);
 				root_stub=(INameserver) registry.lookup(root_id);
 				INameserver ns_stub=(INameserver) UnicastRemoteObject.exportObject(ns, 0);
-				//root_stub.registerNameserver(reverseDomain(domain), ns_stub, ns_stub);
 				root_stub.registerNameserver(domain, ns_stub, ns_stub);
 			}
 			new Thread(shell).start();
@@ -126,7 +116,6 @@ public class Nameserver implements INameserverCli, Runnable {
 			try {
 				exit();
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 		}
@@ -198,16 +187,4 @@ public class Nameserver implements INameserverCli, Runnable {
 		}
 		return result.append(components[0]).toString();
 	}
-
-	/**
-	 * http://stackoverflow.com/a/740351
-	 * @param c
-	 * @return
-	 */
-	private static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
-		List<T> list = new ArrayList<T>(c);
-		java.util.Collections.sort(list);
-		return list;
-	}
-
 }

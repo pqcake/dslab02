@@ -9,6 +9,7 @@ import javax.crypto.NoSuchPaddingException;
 import java.io.File;
 import java.io.IOException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 
 /**
@@ -23,7 +24,7 @@ public class EncryptionUtilAuthRSA implements EncryptionUtil {
      * @param outKey
      * @param inKey
      */
-    public EncryptionUtilAuthRSA(String outKey,String inKey){
+    public EncryptionUtilAuthRSA(Key outKey,Key inKey){
         // make sure to use the right ALGORITHM for what you want to do (see text)
 
         try {
@@ -34,44 +35,45 @@ public class EncryptionUtilAuthRSA implements EncryptionUtil {
         } catch (NoSuchPaddingException e) {
             e.printStackTrace();
         }
+        initKeys(outKey,inKey);
 
+    }
+
+    public void initKeys(Key outKey,Key inKey){
         // MODE is the encryption/decryption mode
         // KEY is either a private, public or secret key
-        File inKeyFile=new File(inKey);
-        File outKeyFile=new File(outKey);
         try {
-            in.init(Cipher.DECRYPT_MODE, Keys.readPublicPEM(inKeyFile) );
-            out.init(Cipher.ENCRYPT_MODE, Keys.readPrivatePEM(outKeyFile));
+            if(in!=null){
+                if(inKey!=null)
+                    in.init(Cipher.DECRYPT_MODE,inKey);
+            }
+            if(out!=null){
+                if(outKey!=null)
+                    out.init(Cipher.ENCRYPT_MODE,outKey);
+            }
         } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
+
     @Override
     public byte[] encrypt(byte[] msg) {
         try {
             return out.doFinal(msg);
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        }finally {
-            return null;
+        } catch (IllegalBlockSizeException | BadPaddingException e) {
+            //e.printStackTrace();
         }
+        return msg;
     }
 
     @Override
     public byte[] decrypt(byte[] received) {
         try {
             return in.doFinal(received);
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } finally {
-            return null;
+        } catch (IllegalBlockSizeException | BadPaddingException e) {
+            //e.printStackTrace();
         }
+        return received;
     }
 }

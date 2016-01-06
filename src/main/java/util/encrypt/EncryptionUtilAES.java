@@ -39,25 +39,19 @@ public class EncryptionUtilAES implements EncryptionUtil {
     public byte[] encrypt(byte[] msg) {
         try {
             return aesOUT.doFinal(msg);
-        } catch (IllegalBlockSizeException e) {
+        } catch (IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } finally {
-            return null;
         }
+        return msg;
     }
 
     @Override
     public byte[] decrypt(byte[] received)  {
         try {
             return aesIN.doFinal(received);
-        } catch (IllegalBlockSizeException e) {
+        } catch (IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } finally {
-            return null;
         }
+        return received;
     }
 }
