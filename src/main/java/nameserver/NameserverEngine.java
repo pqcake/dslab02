@@ -28,7 +28,7 @@ public class NameserverEngine implements INameserver {
 //			if(users.containsKey(username)){
 //				throw new AlreadyRegisteredException(username+" already registered!");
 //			}
-			log.info("Registered "+username);
+			log.info("Registered user: "+username);
 			users.put(username, address);
 		}else{
 			String remaining_zones=array[0];
@@ -44,11 +44,13 @@ public class NameserverEngine implements INameserver {
 
 	@Override
 	public INameserverForChatserver getNameserver(String zone) throws RemoteException {
+		log.info("Get nameserver: "+zone);
 		return servers.get(zone);
 	}
 
 	@Override
 	public String lookup(String username) throws RemoteException {
+		log.info("Get user: "+username);
 		return users.get(username);
 	}
 
@@ -61,7 +63,7 @@ public class NameserverEngine implements INameserver {
 			if(servers.containsKey(domain)){
 				throw new AlreadyRegisteredException(domain+" already registered!");
 			}
-			log.info("Registered "+domain);
+			log.info("Registered nameserver: "+domain);
 			servers.put(domain, nameserver);
 		}else{
 			String remaining_zones=array[0];

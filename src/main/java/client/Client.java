@@ -119,6 +119,7 @@ public class Client implements IClientCli, Runnable {
 			// remove all decorators (akA remove encryption from channel
 			serverHandler.getTcpChannel().setDecorator(null);
 			pubMsgThread.interrupt();
+			incomingpeer.close();
 			response="Logged out.";
 		}
 		return response;
@@ -336,5 +337,4 @@ public class Client implements IClientCli, Runnable {
 		}
 		return response;
 	}
-
 }
