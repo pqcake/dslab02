@@ -15,8 +15,11 @@ import cli.Shell;
 import org.bouncycastle.util.encoders.Base64;
 import util.Config;
 import util.SecurityUtils;
+import util.TCPConnectionDecorator;
 import util.TCPConnectionDecoratorEncryption;
+import util.encrypt.EncryptionUtilAES;
 import util.encrypt.EncryptionUtilAuthRSA;
+import util.encrypt.EncryptionUtilB64;
 
 public class Client implements IClientCli, Runnable {
 
@@ -310,15 +313,18 @@ public class Client implements IClientCli, Runnable {
 		}else{
 			try{
 				serverHandler=new ServerTCPHandler(config.getString("chatserver.host"),config.getInt("chatserver.tcp.port"));
-				serverHandler.start();
 				//Read key file locations
 				String clientKey=config.getString("keys.dir")+username+".pem";
 				String serverKey=config.getString("chatserver.key");
 				//create and init server and client RSA ciphers
 				EncryptionUtilAuthRSA rsaUtil=new EncryptionUtilAuthRSA(clientKey,serverKey);
 				TCPConnectionDecoratorEncryption rsaDecorator=new TCPConnectionDecoratorEncryption(rsaUtil);
+				TCPConnectionDecoratorEncryption b64Decorator=new TCPConnectionDecoratorEncryption(new EncryptionUtilB64());
 				//ToDo add RSA Decorators to TCPConnection
 				serverHandler.println("!authenticate "+username+ " " + challenge);
+				rsaDecorator.setDecorator(b64Decorator);
+				serverHandler.getTcpChannel().setDecorator(rsaDecorator);
+				serverHandler.start();
 
 				response=serverHandler.getNextResponse();
 				if(response.startsWith(ERROR)){
@@ -332,7 +338,13 @@ public class Client implements IClientCli, Runnable {
 						byte[] aesKEY=Base64.decode(b64AESKey);
 						byte[] aesIV=Base64.decode(b64AESIv);
 						//ToDO create AES Decorator object with key and iv
+						TCPConnectionDecorator aesAddon=new TCPConnectionDecoratorEncryption(new EncryptionUtilAES(aesKEY,aesIV));
+						TCPConnectionDecorator currentDecorator=serverHandler.getTcpChannel().getDecorator();
+						if(currentDecorator!=null)
+							aesAddon.setDecorator(currentDecorator.getDecorator());
+						serverHandler.getTcpChannel().setDecorator(aesAddon);
 						//ToDo  AES part send server challenge
+						serverHandler.println(serverChallenge);
 						this.username = username;
 						pubMsgThread = new Thread(this);
 						pubMsgThread.start();
