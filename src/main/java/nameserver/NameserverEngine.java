@@ -25,9 +25,9 @@ public class NameserverEngine implements INameserver {
 		
 		String [] array=getDomainSubstrings(username);
 		if(array.length==1){
-			if(users.containsKey(username)){
-				throw new AlreadyRegisteredException(username+" already registered!");
-			}
+//			if(users.containsKey(username)){
+//				throw new AlreadyRegisteredException(username+" already registered!");
+//			}
 			log.info("Registered "+username);
 			users.put(username, address);
 		}else{

@@ -25,7 +25,7 @@ public abstract class AbstractTCPHandler extends Thread{
 	public AbstractTCPHandler(String host,int port) throws IllegalArgumentException, IOException {
 		this.socket = new Socket(host,port);
 		tcpChannel=new TCPConnectionBasic(socket);
-		createReaderWriter();
+		//createReaderWriter();
 	}
 
 	public AbstractTCPHandler(int port) throws IllegalArgumentException, IOException {
@@ -47,7 +47,8 @@ public abstract class AbstractTCPHandler extends Thread{
 			if(serverSocket!=null){
 				try {
 					this.socket=serverSocket.accept();
-					createReaderWriter();
+					tcpChannel=new TCPConnectionBasic(socket);
+					//createReaderWriter();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					//e.printStackTrace();
@@ -64,10 +65,12 @@ public abstract class AbstractTCPHandler extends Thread{
 				}
 			}
 			if(incoming==null){
-				runflag=false;
+				hookIncomingNull();
 			}
 		}
 	}
+
+	protected void hookIncomingNull() {}
 
 	protected void hookCatchIOException(){}
 

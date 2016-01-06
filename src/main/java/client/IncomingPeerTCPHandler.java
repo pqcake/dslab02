@@ -23,6 +23,12 @@ public class IncomingPeerTCPHandler extends AbstractTCPHandler{
 		}
 	}
 
+	@Override
+	protected void hookIncomingNull() {
+		//just dont set because normally anyway true, only false when close called and this would overwrite again to true -> thread not ending
+		//runflag=true;
+	}
+
 //	@Override
 //	public void run() {
 //		try {
