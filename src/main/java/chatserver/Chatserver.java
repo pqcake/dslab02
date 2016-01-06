@@ -37,17 +37,8 @@ public class Chatserver implements IChatserverCli, Runnable {
 				
 		user_conf=new Config("user");
 		users=new UserHolder(user_conf);
-		
-		/*
-		 * First, create a new Shell instance and provide the name of the
-		 * component, an InputStream as well as an OutputStream. If you want to
-		 * test the application manually, simply use System.in and System.out.
-		 */
+
 		shell = new Shell(componentName, userRequestStream, userResponseStream);
-		/*
-		 * Next, register all commands the Shell should support. In this example
-		 * this class implements all desired commands.
-		 */
 		shell.register(this);
 	}
 
@@ -94,27 +85,7 @@ public class Chatserver implements IChatserverCli, Runnable {
 	@Command
 	public String users() throws IOException {
 		return users.toString();
-		
-// OLD: getting directly from Config
-//		StringBuilder sb=new StringBuilder();
-//		
-//		for(String str : asSortedList(user_conf.listKeys())){
-//			sb.append(str.substring(0, str.lastIndexOf(".password")));
-//			sb.append("\n");
-//		}
-//		return sb.toString();
 	}
-	
-	/**
-	 * http://stackoverflow.com/a/740351
-	 * @param c
-	 * @return
-	 */
-//	private static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
-//	  List<T> list = new ArrayList<T>(c);
-//	  java.util.Collections.sort(list);
-//	  return list;
-//	}
 
 	@Override
 	@Command
@@ -146,5 +117,4 @@ public class Chatserver implements IChatserverCli, Runnable {
 				new Config("chatserver"), System.in, System.out);
 		chatserver.run();
 	}
-
 }

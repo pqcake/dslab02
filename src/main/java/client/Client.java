@@ -1,12 +1,7 @@
 package client;
 
 import java.io.*;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
+import java.net.*;
 
 import cli.Command;
 import cli.Shell;
@@ -45,30 +40,10 @@ public class Client implements IClientCli, Runnable {
 	 */
 	public Client(String componentName, Config config, InputStream userRequestStream, PrintStream userResponseStream) {
 		this.config = config;
-		
-		/*
-		 * First, create a new Shell instance and provide the name of the
-		 * component, an InputStream as well as an OutputStream. If you want to
-		 * test the application manually, simply use System.in and System.out.
-		 */
 		shell = new Shell(componentName, userRequestStream, userResponseStream);
-		/*
-		 * Next, register all commands the Shell should support. In this example
-		 * this class implements all desired commands.
-		 */
 		shell.register(this);
-		/*
-		 * Finally, make the Shell process the commands read from the
-		 * InputStream by invoking Shell.run(). Note that Shell implements the
-		 * Runnable interface. Thus, you can run the Shell asynchronously by
-		 * starting a new Thread:
-		 * 
-		 * Thread shellThread = new Thread(shell); shellThread.start();
-		 * 
-		 * In that case, do not forget to terminate the Thread ordinarily.
-		 * Otherwise, the program will not exit.
-		 */
 		new Thread(shell).start();
+
 		// open a new DatagramSocket
 		try {
 			udpsocket = new DatagramSocket();
@@ -84,7 +59,6 @@ public class Client implements IClientCli, Runnable {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
 	}
 
 	@Override
@@ -208,7 +182,7 @@ public class Client implements IClientCli, Runnable {
 			try{
 				PeerTCPHandler peer=new PeerTCPHandler(host, port, shell, this.username,toUser, message);
 				peer.run();
-			}catch(UnknownHostException ue){
+			}catch(UnknownHostException | ConnectException e){
 				return "Could not connect to user "+toUser+"@"+host+":"+port;
 			}
 			return null; //msg will be printed through PeerTCPHandler
@@ -235,15 +209,14 @@ public class Client implements IClientCli, Runnable {
 		if(serverHandler.isAlive()){
 			String [] parts=privateAddress.split(":", 2);
 			int port;
-			try{
-				port=Integer.parseInt(parts[1]);
+			try {
+				port = Integer.parseInt(parts[1]);
+			}catch(ArrayIndexOutOfBoundsException e){
+				return "No port specified.";
 			}catch(NumberFormatException nfe){
 				return "Problem parsing port \""+parts[1]+"\"";
 			}
-			//if out of range IllegalArgumentException is thrown
-//			if(!(port>0 && port <=65535)){
-//				return "Port has to be between 1 and 65535";
-//			}
+
 			if(incomingpeer!=null){
 				incomingpeer.close();
 			}

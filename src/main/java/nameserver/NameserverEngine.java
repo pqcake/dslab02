@@ -55,36 +55,6 @@ public class NameserverEngine implements INameserver {
 	@Override
 	public void registerNameserver(String domain, INameserver nameserver,INameserverForChatserver nameserverForChatserver)
 					throws RemoteException, AlreadyRegisteredException, InvalidDomainException {
-//OLD		
-//split at first dot, domain has to be in reversed form, eg. at.vienna and not vienna.at
-//		String [] zones=domain.split("\\.",2);
-//		if(zones.length==2){
-//			INameserver next_ns=servers.get(zones[0]);
-//			log.info("Calling register of "+zones[1]+" on ns "+zones[0]);
-//			next_ns.registerNameserver(zones[1], nameserver, nameserverForChatserver);
-//		}else{
-//			if(zones.length==1){
-//				log.info("Registered "+zones[0]);
-//				servers.put(zones[0], nameserver);
-//			}
-//		}
-//		int pos=domain.lastIndexOf(".");
-//		if(pos==-1){
-//			if(servers.containsKey(domain)){
-//				throw new AlreadyRegisteredException(domain+" already registered!");
-//			}
-//			log.info("Registered "+domain);
-//			servers.put(domain, nameserver);
-//		}else{
-//			String remaining_zones=domain.substring(0, pos);
-//			String next_zone=domain.substring(pos+1,domain.length());
-//			INameserver next_ns=servers.get(next_zone);
-//			if(next_ns==null){
-//				throw new InvalidDomainException("Domain \""+next_zone+"\" is not registered. Therefore \""+remaining_zones+"\" couldn't be registered.");
-//			}
-//			log.info("Calling register of "+remaining_zones+" on ns "+next_zone);
-//			next_ns.registerNameserver(remaining_zones, nameserver, nameserverForChatserver);
-//		}
 		
 		String [] array=getDomainSubstrings(domain);
 		if(array.length==1){
