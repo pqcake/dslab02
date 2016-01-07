@@ -68,7 +68,7 @@ public class PeerTCPHandler extends AbstractTCPHandler {
 	@Override
 	protected void hookBeforeReading() {
 		try {
-			String sendMsg = "!msg " + msg;
+			String sendMsg = "!msg " + fromUser + ": " + msg;
             String hmac = HashMACService.createHMAC(secretKey, sendMsg);
 			tcpChannel.send(hmac + " " + sendMsg);
 		} catch (Exception e) {
