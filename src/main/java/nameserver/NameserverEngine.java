@@ -60,11 +60,13 @@ public class NameserverEngine implements INameserver {
 		
 		String [] array=getDomainSubstrings(domain);
 		if(array.length==1){
-			if(servers.containsKey(domain)){
-				throw new AlreadyRegisteredException(domain+" already registered!");
+			synchronized (this) {
+				if (servers.containsKey(domain)) {
+					throw new AlreadyRegisteredException(domain + " already registered!");
+				}
+				log.info("Registered nameserver: " + domain);
+				servers.put(domain, nameserver);
 			}
-			log.info("Registered nameserver: "+domain);
-			servers.put(domain, nameserver);
 		}else{
 			String remaining_zones=array[0];
 			String next_zone=array[1];
