@@ -46,29 +46,31 @@ public class PeerTCPHandler extends AbstractTCPHandler {
 	@Override
 	protected void hookInReadingLoop(String incoming) throws IOException {
 
-        String response = incoming;
-        if(incoming.contains("!tampered")) {
-            String hmac = incoming.substring(0, incoming.indexOf(" "));
-            String message = incoming.substring(incoming.indexOf(" ")+1);
+		int hmacDelimiter = incoming.indexOf(" ");
 
-            if(!HashMACService.verifyHMAC(secretKey, hmac, message)) {
-                shell.writeLine("Response from " + toUser + " was tampered!");
-            }
-            else {
-                response = "!tampered";
-            }
-        }
-        else {
-            shell.writeLine(toUser + " replied with " + response);
-        }
+		if(hmacDelimiter > 0) {
+			String hmac = incoming.substring(0, hmacDelimiter);
+			String message = incoming.substring(hmacDelimiter+1);
+
+			if(!HashMACService.verifyHMAC(secretKey, hmac, message)) {
+				shell.writeLine("Response from " + toUser + " was tampered!");
+			}
+			else {
+				shell.writeLine("Response from " + toUser + " was " + message);
+			}
+
+		} else {
+			shell.writeLine("Received invalid replay to private message (no HMAC).");
+		}
 		this.close();
 	}
 
 	@Override
 	protected void hookBeforeReading() {
 		try {
-            String hmac = HashMACService.createHMAC(secretKey, msg);
-			tcpChannel.send(hmac + " " + fromUser + ": " + msg);
+			String sendMsg = "!msg " + msg;
+            String hmac = HashMACService.createHMAC(secretKey, sendMsg);
+			tcpChannel.send(hmac + " " + sendMsg);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
