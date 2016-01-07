@@ -26,27 +26,35 @@ public class IncomingPeerTCPHandler extends AbstractTCPHandler{
 
 	@Override
 	protected void hookInReadingLoop(String incoming) throws IOException {
-        String hmac = incoming.substring(0, incoming.indexOf(" "));
-        String sender = incoming.substring(incoming.indexOf(" ")+1, incoming.indexOf(":"));
-        String message = incoming.substring(incoming.indexOf(":")+2);
+        int hmacDelimiter = incoming.indexOf(" ");
 
-        shell.writeLine("(PRIVATE) " + sender + ": " + message);
+        if(hmacDelimiter > 0) {
+            String hmac = incoming.substring(0, hmacDelimiter);
+            String message = incoming.substring(hmacDelimiter+1);
 
-        String response = "";
-        if(HashMACService.verifyHMAC(secretKey, hmac, message)) {
-            response = "!ack";
+            String strippedMessage =  message.substring(message.indexOf(" ")+1); // message without !msg
+
+            shell.writeLine("(PRIVATE) " + strippedMessage);
+
+            String response = "";
+            if(HashMACService.verifyHMAC(secretKey, hmac, message)) {
+                response = "!ack";
+            } else {
+                response = "!tampered " + message;
+                shell.writeLine("Private message was tampered!");
+            }
+
+            String responseHmac = HashMACService.createHMAC(secretKey, response);
+            response = responseHmac + " " + response;
+            try {
+                tcpChannel.send(response);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
         } else {
-            String responseMessage = "!tampered " + message;
-            String responseHmac = HashMACService.createHMAC(secretKey, responseMessage);
-            response = responseHmac + responseMessage;
-            shell.writeLine("Private message from " + sender + " was tampered!");
+            shell.writeLine("Received invalid private message (no HMAC).");
         }
-
-		try {
-			tcpChannel.send(response);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	@Override
