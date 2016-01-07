@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.SocketException;
+import java.rmi.NotBoundException;
 
 import cli.Command;
 import cli.Shell;
@@ -72,9 +73,9 @@ public class Chatserver implements IChatserverCli, Runnable {
 			this.udplistener=new UDPListener(config,users);
 			new Thread(tcplistener).start();
 			new Thread(udplistener).start();
-		} catch (IOException e) {
+		} catch (IOException | NotBoundException e) {
 			try {
-				shell.writeLine(e.getMessage());
+				shell.writeLine(e.getMessage()+"\nroot nameserver not running?");
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}finally{
@@ -104,7 +105,7 @@ public class Chatserver implements IChatserverCli, Runnable {
 		}
 		if(shell!=null){
 			shell.close();
-			//shellthread.interrupt();
+			shellthread.interrupt();
 		}
 		return "Server shut down successful";
 	}

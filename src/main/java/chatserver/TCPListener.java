@@ -36,23 +36,19 @@ public class TCPListener implements Runnable{
 	 * @throws IOException 
 	 * 
 	 */
-	public TCPListener(Config config,UserHolder users) throws IOException {
+	public TCPListener(Config config,UserHolder users) throws IOException, NotBoundException {
 		this.config=config;
 		this.users=users;
 		this.pool=Executors.newCachedThreadPool();
 		this.serverSocket = new ServerSocket(config.getInt("tcp.port"));
+		Registry registry=LocateRegistry.getRegistry(config.getString("registry.host"), config.getInt("registry.port"));
+		root_stub=(INameserver) registry.lookup(config.getString("root_id"));
 	}
 
 	@Override
 	public void run() {		
 		Socket socket = null;
-		try {
-			Registry registry=LocateRegistry.getRegistry(config.getString("registry.host"), config.getInt("registry.port"));
-			root_stub=(INameserver) registry.lookup(config.getString("root_id"));
-		} catch (RemoteException | NotBoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+
 		try {
 			while(true){
 				//waiting for connection
