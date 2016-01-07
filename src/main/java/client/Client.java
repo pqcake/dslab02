@@ -123,7 +123,7 @@ public class Client implements IClientCli, Runnable {
 		{
 			serverHandler.println("!logout");
 			this.username="";
-			//response=serverHandler.getNextResponse();
+			response=serverHandler.getNextResponse();
 			
 			serverHandler.close();
 			// remove all decorators (akA remove encryption from channel
@@ -132,7 +132,7 @@ public class Client implements IClientCli, Runnable {
 			if(incomingpeer!=null){
 				incomingpeer.close();
 			}
-			response="Logged out.";
+			//response="Logged out.";
 		}
 		return response;
 	}
@@ -331,6 +331,7 @@ public class Client implements IClientCli, Runnable {
 						serverHandler.getTcpChannel().setDecorator(aesAddon);
 						serverHandler.println(serverChallenge);
 						this.username = username;
+						stop=false;
 						pubMsgThread = new Thread(this);
 						pubMsgThread.start();
 						response = serverHandler.getNextResponse();
@@ -344,7 +345,6 @@ public class Client implements IClientCli, Runnable {
 			}catch (FileNotFoundException e){
 				return "No key file for this users!";
 			}catch(IOException ioe){
-				ioe.printStackTrace();
 				return "Could not connect to server "+config.getString("chatserver.host")+":"+config.getInt("chatserver.tcp.port");
 			}
 		}

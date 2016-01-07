@@ -248,12 +248,12 @@ public class TCPHandler implements Runnable {
 
 		if(user!=null){
 			user.setStatus(Status.OFFLINE);
-			try {
-				socket.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+//			try {
+//				socket.close();
+//			} catch (IOException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
 			return "Successfully logged out.";
 		}
 		return "!error User was not logged in";
