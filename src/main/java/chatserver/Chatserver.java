@@ -19,6 +19,7 @@ public class Chatserver implements IChatserverCli, Runnable {
 	private Shell shell;
 	private TCPListener tcplistener;
 	private UDPListener udplistener;
+	private Thread shellthread;
 
 	/**
 	 * @param componentName
@@ -55,7 +56,8 @@ public class Chatserver implements IChatserverCli, Runnable {
 		 * In that case, do not forget to terminate the Thread ordinarily.
 		 * Otherwise, the program will not exit.
 		 */
-		new Thread(shell).start(); //todo kill this thread on jvm bind exception
+		shellthread=new Thread(shell);
+		shellthread.start(); //todo kill this thread on jvm bind exception
 		try {
 			shell.writeLine(componentName
 					+ " up and waiting for commands!");
@@ -102,6 +104,7 @@ public class Chatserver implements IChatserverCli, Runnable {
 		}
 		if(shell!=null){
 			shell.close();
+			//shellthread.interrupt();
 		}
 		return "Server shut down successful";
 	}

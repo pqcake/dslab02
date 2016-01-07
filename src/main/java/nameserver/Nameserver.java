@@ -3,6 +3,7 @@ package nameserver;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.ConnectException;
 import java.rmi.AccessException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NoSuchObjectException;
@@ -111,18 +112,22 @@ public class Nameserver implements INameserverCli, Runnable {
 			new Thread(shell).start();
 			shell.writeLine(componentName+" up and waiting for commands!");
 
-		} catch (IOException | AlreadyRegisteredException | InvalidDomainException | NotBoundException | AlreadyBoundException e) {
+		}catch(java.rmi.ConnectException ce){
+			System.err.println(ce.getMessage()+"\nroot-ns not running?\nShutdown now.");
+			try {
+				exit();
+			} catch (IOException e1) {}
+		}
+		catch (IOException | AlreadyRegisteredException | InvalidDomainException | NotBoundException | AlreadyBoundException e) {
 			System.err.println(e.getMessage()+"\nShutdown now.");
 			try {
 				exit();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
+			} catch (IOException e1) {}
 		}
 	}
 
 	private boolean isRoot(){
-		return domain==null ? true : false;
+		return domain==null;
 	}
 
 	@Override
